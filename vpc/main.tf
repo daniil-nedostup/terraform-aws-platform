@@ -1,6 +1,6 @@
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.14.0"
+  version = "6.0.1"
 
   name = var.platform_name
 
@@ -35,7 +35,7 @@ module "vpc" {
   ]
 
 # -- If you need to create unique tags for each subnet, uncomment the following lines for Karpenter Discovery
-# -- https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/5.1.2#input_private_subnet_tags_per_az
+# -- https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/6.0.1#input_private_subnet_tags_per_az
   # private_subnet_tags_per_az = {
   #   "eu-central-1a" = {
   #     "karpenter.sh/discovery" = "<PLATFORM_NAME>"

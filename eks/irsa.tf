@@ -5,7 +5,7 @@
 
 module "aws_ebs_csi_driver_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.47.1"
+  version = "5.60.0"
 
   role_name                     = "AWSIRSA_${replace(title(local.cluster_name), "-", "")}_EBS_CSI_Driver"
   role_permissions_boundary_arn = var.role_permissions_boundary_arn
@@ -29,7 +29,7 @@ module "aws_ebs_csi_driver_irsa" {
 
 module "vpc_cni_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.47.1"
+  version = "5.60.0"
 
   role_name                     = "AWSIRSA_${replace(title(local.cluster_name), "-", "")}_VPC_CNI"
   role_permissions_boundary_arn = var.role_permissions_boundary_arn
@@ -52,7 +52,7 @@ module "vpc_cni_irsa" {
 
 module "externalsecrets_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.47.1"
+  version = "5.60.0"
 
   role_name                     = "AWSIRSA_${replace(title(local.cluster_name), "-", "")}_ExternalSecretOperatorAccess"
   assume_role_condition_test    = "StringLike"
@@ -79,7 +79,7 @@ module "externalsecrets_irsa" {
 
 module "kaniko_iam_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.47.1"
+  version = "5.60.0"
 
   create_role = var.create_kaniko_iam_role
 
@@ -102,7 +102,7 @@ module "kaniko_iam_role" {
 
 module "kaniko_iam_policy" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version = "5.47.1"
+  version = "5.60.0"
 
   create_policy = var.create_kaniko_iam_role
 
@@ -167,7 +167,7 @@ module "kaniko_iam_policy" {
 
 module "cd_pipeline_operator_irsa_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.53.0"
+  version = "5.60.0"
 
   create_role = var.create_cd_pipeline_operator_irsa
 
@@ -192,7 +192,7 @@ module "cd_pipeline_operator_irsa_role" {
 
 module "cd_pipeline_operator_cross_account_assume_role_policy" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version = "5.53.0"
+  version = "5.60.0"
 
   create_policy = var.create_cd_pipeline_operator_irsa
 
@@ -219,7 +219,7 @@ module "cd_pipeline_operator_cross_account_assume_role_policy" {
 #
 # module "cd_pipeline_operator_agent_role" {
 #   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
-#   version = "5.53.0"
+#   version = "5.60.0"
 #
 #   create_role       = var.create_cd_pipeline_operator_irsa
 #   role_name         = "AWSIRSA_${replace(title(local.cluster_name), "-", "")}_CDPipelineAgent"
@@ -258,7 +258,7 @@ module "cd_pipeline_operator_cross_account_assume_role_policy" {
 
 module "argocd_irsa_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.53.0"
+  version = "5.60.0"
 
   create_role = var.create_argocd_irsa
 
@@ -286,7 +286,7 @@ module "argocd_irsa_role" {
 
 module "argocd_cross_account_access_policy" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version = "5.53.0"
+  version = "5.60.0"
 
   create_policy = var.create_argocd_irsa
 
@@ -315,7 +315,7 @@ module "argocd_cross_account_access_policy" {
 #
 # module "argocd_agent_role" {
 #   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role"
-#   version = "5.53.0"
+#   version = "5.60.0"
 #
 #   create_role       = var.create_argocd_irsa
 #   role_name         = "AWSIRSA_${replace(title(local.cluster_name), "-", "")}_ArgoCDAgentAccess"
@@ -334,7 +334,7 @@ module "argocd_cross_account_access_policy" {
 
 module "atlantis_iam_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.47.1"
+  version = "5.60.0"
 
   create_role = var.create_atlantis_iam_role
 
@@ -358,7 +358,7 @@ module "atlantis_iam_role" {
 
 module "atlantis_iam_policy" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-policy"
-  version = "5.47.1"
+  version = "5.60.0"
 
   create_policy = var.create_atlantis_iam_role
 

@@ -1,6 +1,6 @@
 module "acm" {
   source  = "terraform-aws-modules/acm/aws"
-  version = "5.1.1"
+  version = "5.2.0"
 
   domain_name = var.platform_domain_name
   zone_id     = data.aws_route53_zone.this.zone_id
@@ -16,7 +16,7 @@ module "acm" {
 
 module "alb" {
   source  = "terraform-aws-modules/alb/aws"
-  version = "9.12.0"
+  version = "9.17.0"
 
   name = "${var.platform_name}-ingress-alb"
 
@@ -44,7 +44,7 @@ module "alb" {
       certificate_arn = module.acm.acm_certificate_arn
 
       forward = {
-        target_group_key = "https-instance"
+        target_group_key = "http-instance"
       }
     }
   }
@@ -72,7 +72,7 @@ module "alb" {
 
 module "records" {
   source  = "terraform-aws-modules/route53/aws//modules/records"
-  version = "4.1.0"
+  version = "5.0.0"
 
   zone_name = var.platform_domain_name
   records = [
@@ -89,7 +89,7 @@ module "records" {
 
 module "key_pair" {
   source  = "terraform-aws-modules/key-pair/aws"
-  version = "2.0.3"
+  version = "2.1.0"
 
   key_name              = format("%s-%s", local.cluster_name, "key-pair")
   private_key_algorithm = "ED25519"
@@ -100,12 +100,12 @@ module "key_pair" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "20.30.1"
+  version = "21.0.9"
 
   enable_cluster_creator_admin_permissions = true
-  cluster_name                             = local.cluster_name
-  cluster_version                          = var.cluster_version
-  cluster_endpoint_public_access           = true
+  name                                     = local.cluster_name
+  kubernetes_version                       = var.cluster_version
+  endpoint_public_access                   = true
 
   create_iam_role               = true
   iam_role_use_name_prefix      = false
@@ -114,53 +114,39 @@ module "eks" {
   vpc_id     = var.vpc_id
   subnet_ids = var.private_subnets_id
 
-  create_cloudwatch_log_group                = false
-  cluster_enabled_log_types                  = []
-  create_node_security_group                 = false
-  create_cluster_primary_security_group_tags = false
+  create_cloudwatch_log_group        = false
+  enabled_log_types                  = []
+  create_node_security_group         = false
+  create_primary_security_group_tags = false
 
-  create_cluster_security_group = false
-  cluster_security_group_id     = local.cluster_security_group_id
+  create_security_group = false
+  security_group_id     = local.cluster_security_group_id
 
-  cluster_encryption_config = {}
-
-  # Self Managed Node Group(s)
-  self_managed_node_group_defaults = {
-    ami_type                      = "AL2023_x86_64_STANDARD"
-    instance_type                 = "m7i.xlarge"
-    subnet_ids                    = [var.private_subnets_id] # set [var.private_subnets_id[1]] to deploy in eu-central-1b
-    target_group_arns             = [module.alb.target_groups["http-instance"].arn]
-    key_name                      = module.key_pair.key_pair_name
-    enable_monitoring             = false
-    use_mixed_instances_policy    = true
-    iam_role_use_name_prefix      = false
-    iam_role_permissions_boundary = var.role_permissions_boundary_arn
-    block_device_mappings = {
-      xvda = {
-        device_name = "/dev/xvda"
-        ebs = {
-          volume_size           = 30
-          volume_type           = "gp3"
-          iops                  = 3000
-          throughput            = 150
-          encrypted             = false
-          delete_on_termination = true
-        }
-      }
-    }
-
-    cloudinit_pre_nodeadm = [{
-      content      = var.add_userdata
-      content_type = "text/x-shellscript; charset=\"us-ascii\""
-    }]
-
-    # IAM role
-    create_iam_instance_profile = true
-  }
+  encryption_config = {}
 
   self_managed_node_groups = {
     worker_group_spot = {
-      name = format("%s-%s", local.cluster_name, "spot")
+      ami_type                   = "AL2023_x86_64_STANDARD"
+      instance_type              = "m7i.xlarge"
+      name                       = format("%s-%s", local.cluster_name, "spot")
+      subnet_ids                 = [var.private_subnets_id[1]]
+      target_group_arns          = [module.alb.target_groups["http-instance"].arn]
+      key_name                   = module.key_pair.key_pair_name
+      enable_monitoring          = false
+      use_mixed_instances_policy = true
+      block_device_mappings      = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 30
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 150
+            encrypted             = false
+            delete_on_termination = true
+          }
+        }
+      }
 
       min_size     = var.spot_min_nodes_count
       max_size     = var.spot_max_nodes_count
@@ -170,6 +156,7 @@ module "eks" {
       iam_role_permissions_boundary = var.role_permissions_boundary_arn
 
       cloudinit_pre_nodeadm = [{
+        content      = var.add_userdata
         content_type = "text/x-shellscript; charset=\"us-ascii\""
         },
         {
@@ -185,11 +172,15 @@ module "eks" {
           content_type = "application/node.eks.aws"
       }]
 
+      create_iam_instance_profile = true
+
       mixed_instances_policy = {
         instances_distribution = {
           spot_instance_pools = 2
         }
-        override = var.spot_instance_types
+        launch_template = {
+          override = var.spot_instance_types
+        }
       }
 
       # Schedulers
@@ -212,7 +203,27 @@ module "eks" {
       }
     },
     worker_group_on_demand = {
-      name = format("%s-%s", local.cluster_name, "on-demand")
+      ami_type                   = "AL2023_x86_64_STANDARD"
+      instance_type              = "m7i.xlarge"
+      name                       = format("%s-%s", local.cluster_name, "on-demand")
+      subnet_ids                 = var.private_subnets_id
+      target_group_arns          = [module.alb.target_groups["http-instance"].arn]
+      key_name                   = module.key_pair.key_pair_name
+      enable_monitoring          = false
+      use_mixed_instances_policy = true
+      block_device_mappings      = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 30
+            volume_type           = "gp3"
+            iops                  = 3000
+            throughput            = 150
+            encrypted             = false
+            delete_on_termination = true
+          }
+        }
+      }
 
       min_size     = var.demand_min_nodes_count
       max_size     = var.demand_max_nodes_count
@@ -222,6 +233,7 @@ module "eks" {
       iam_role_permissions_boundary = var.role_permissions_boundary_arn
 
       cloudinit_pre_nodeadm = [{
+        content      = var.add_userdata
         content_type = "text/x-shellscript; charset=\"us-ascii\""
         },
         {
@@ -237,8 +249,12 @@ module "eks" {
           content_type = "application/node.eks.aws"
       }]
 
+      create_iam_instance_profile = true
+
       mixed_instances_policy = {
-        override = var.demand_instance_types
+        launch_template = {
+          override = var.spot_instance_types
+        }
       }
 
       # Schedulers
@@ -263,30 +279,31 @@ module "eks" {
   }
 
   # OIDC Identity provider
-  cluster_identity_providers = var.cluster_identity_providers
+  identity_providers = var.cluster_identity_providers
 
   # Addons
-  cluster_addons = {
+  # Verify the addon versions with: aws eks describe-addon-versions --addon-name addon-name --kubernetes-version 1.32
+  addons = {
     aws-ebs-csi-driver = {
-      addon_version            = "v1.36.0-eksbuild.1"
+      addon_version            = "v1.47.0-eksbuild.1"
       resolve_conflicts        = "OVERWRITE"
       service_account_role_arn = module.aws_ebs_csi_driver_irsa.iam_role_arn
     }
     snapshot-controller = {
-      addon_version            = "v8.1.0-eksbuild.2"
+      addon_version            = "v8.3.0-eksbuild.1"
       resolve_conflicts        = "OVERWRITE"
       service_account_role_arn = module.aws_ebs_csi_driver_irsa.iam_role_arn
     }
     coredns = {
-      addon_version     = "v1.11.3-eksbuild.2"
+      addon_version     = "v1.11.4-eksbuild.14"
       resolve_conflicts = "OVERWRITE"
     }
     kube-proxy = {
-      addon_version     = "v1.30.6-eksbuild.2"
+      addon_version     = "v1.32.6-eksbuild.2"
       resolve_conflicts = "OVERWRITE"
     }
     vpc-cni = {
-      addon_version            = "v1.19.0-eksbuild.1"
+      addon_version            = "v1.20.0-eksbuild.1"
       resolve_conflicts        = "OVERWRITE"
       service_account_role_arn = module.vpc_cni_irsa.iam_role_arn
     }
@@ -297,7 +314,7 @@ module "eks" {
 
 module "eks_aws_auth" {
   source  = "terraform-aws-modules/eks/aws//modules/aws-auth"
-  version = "20.26.0"
+  version = "20.37.2"
 
   create_aws_auth_configmap = true
   manage_aws_auth_configmap = true
